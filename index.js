@@ -90,20 +90,6 @@ async function run() {
             res.send(result);
         });
 
-        // app.put('/campaigns/:id', async (req, res) => {
-        //     const id = req.params.id;
-        //     const updatedCampaign = req.body;
-        //     const result = await campaignsCollection.updateOne({ _id: new ObjectId(id) }, { $set: updatedCampaign });
-        //     res.send(result);
-        // });
-
-        // app.delete('/campaigns/:id', async (req, res) => {
-        //     const id = req.params.id;
-        //     const result = await campaignsCollection.deleteOne({ _id: new ObjectId(id) });
-        //     res.send(result);
-        // });
-
-
         // donation operation
 
         // app.get('/donations', async (req, res) => {
