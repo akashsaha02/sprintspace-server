@@ -34,7 +34,7 @@ async function run() {
         console.log("Connected to the server");
         const database = client.db("speintSpace");
         const eventsCollection = database.collection("events");
-        // const donatationCollection = database.collection("donations");
+        const registrationCollection = database.collection("registrations");
 
 
         // campaigns operation
@@ -77,6 +77,19 @@ async function run() {
             res.send(result);
         });
 
+        app.put('/events/:id', async (req, res) => {
+            const id = req.params.id;
+            const updatedEvent = req.body;
+            const result = await eventsCollection.updateOne({ _id: new ObjectId(id) }, { $set: updatedEvent });
+            res.send(result);
+        });
+
+        app.delete('/events/:id', async (req, res) => {
+            const id = req.params.id;
+            const result = await eventsCollection.deleteOne({ _id: new ObjectId(id) });
+            res.send(result);
+        });
+
         // app.put('/campaigns/:id', async (req, res) => {
         //     const id = req.params.id;
         //     const updatedCampaign = req.body;
@@ -98,12 +111,23 @@ async function run() {
         //     res.send(donations);
         // });
 
-        // app.post('/donations', async (req, res) => {
+        // app.post('/regis', async (req, res) => {
         //     const newDonation = req.body;
         //     // console.log(newDonation);
         //     const result = await donatationCollection.insertOne(newDonation);
         //     res.send(result);
         // });
+
+        app.get('/registrations', async (req, res) => {
+            const registrations = await registrationCollection.find().toArray();
+            res.send(registrations);
+        });
+
+        app.post('/registrations', async (req, res) => {
+            const newRegistration = req.body;
+            const result = await registrationCollection.insertOne(newRegistration);
+            res.send(result);
+        });
 
         app.get('/', (req, res) => {
             res.send('Hello World');
