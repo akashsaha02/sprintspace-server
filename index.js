@@ -11,11 +11,26 @@ const app = express();
 
 // middlewares
 app.use(cors({
-    origin:['http://localhost:5173','http://localhost:5174'],
-    credentials:true,
+    origin: ['http://localhost:5173', 'http://localhost:5174'],
+    credentials: true,
 }));
 app.use(express.json());
 app.use(cookieParser());
+
+const verifyToken = (req, res, next) => {
+    const token = req.cookies.token;
+    if (!token) {
+        return res.status(401).send('Access Denied');
+    }
+    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+        if (err) {
+            return res.status(403).send('Invalid Token');
+        }
+        req.user = decoded;
+        next();
+    })
+
+};
 
 
 const PORT = 3000 || process.env.PORT;
@@ -45,16 +60,16 @@ async function run() {
         // jwt
 
         app.post('/jwt', (req, res) => {
-            const {user} = req.body;
-            const token = jwt.sign({user}, process.env.JWT_SECRET, {expiresIn: '5h'});
-            res.cookie('token', token, {httpOnly: true, secure: false}).send({Success: 'Token sent'});
+            const { user } = req.body;
+            const token = jwt.sign({ user }, process.env.JWT_SECRET, { expiresIn: '5h' });
+            res.cookie('token', token, { httpOnly: true, secure: false }).send({ Success: 'Token sent' });
         });
 
         app.post('/logout', (req, res) => {
-            res.clearCookie('token',{
+            res.clearCookie('token', {
                 httpOnly: true,
                 secure: false
-            }).send({Success: 'Logged out'});
+            }).send({ Success: 'Logged out' });
         });
 
 
@@ -118,6 +133,15 @@ async function run() {
             res.send(registrations);
         });
 
+        app.get('/registrations/:id', async (req, res) => {
+            const id = req.params.id;
+            if (!ObjectId.isValid(id)) {
+                return res.status(400).send('Invalid registration ID');
+            }
+            const registration = await registrationCollection.findOne({ _id: new ObjectId(id) });
+            res.send(registration);
+        });
+
         app.post('/registrations', async (req, res) => {
             const newRegistration = req.body;
             const result = await registrationCollection.insertOne(newRegistration);
@@ -127,6 +151,7 @@ async function run() {
         app.put('/registrations/:id', async (req, res) => {
             const id = req.params.id;
             const updatedRegistration = req.body;
+            delete updatedRegistration._id; // Ensure _id is not included in the update
             const result = await registrationCollection.updateOne({ _id: new ObjectId(id) }, { $set: updatedRegistration });
             res.send(result);
         });
