@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const jwt = require('jsonwebtoken');
+const cookieParser = require('cookie-parser');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 dotenv.config();
@@ -8,8 +10,12 @@ dotenv.config();
 const app = express();
 
 // middlewares
-app.use(cors());
+app.use(cors({
+    origin:['http://localhost:5173','http://localhost:5174'],
+    credentials:true,
+}));
 app.use(express.json());
+app.use(cookieParser());
 
 
 const PORT = 3000 || process.env.PORT;
@@ -36,8 +42,23 @@ async function run() {
         const eventsCollection = database.collection("events");
         const registrationCollection = database.collection("registrations");
 
+        // jwt
 
-        // campaigns operation
+        app.post('/jwt', (req, res) => {
+            const {user} = req.body;
+            const token = jwt.sign({user}, process.env.JWT_SECRET, {expiresIn: '5h'});
+            res.cookie('token', token, {httpOnly: true, secure: false}).send({Success: 'Token sent'});
+        });
+
+        app.post('/logout', (req, res) => {
+            res.clearCookie('token',{
+                httpOnly: true,
+                secure: false
+            }).send({Success: 'Logged out'});
+        });
+
+
+        // Events operation
 
         app.get('/events', async (req, res) => {
             const events = await eventsCollection.find().toArray();
@@ -90,19 +111,7 @@ async function run() {
             res.send(result);
         });
 
-        // donation operation
-
-        // app.get('/donations', async (req, res) => {
-        //     const donations = await donatationCollection.find().toArray();
-        //     res.send(donations);
-        // });
-
-        // app.post('/regis', async (req, res) => {
-        //     const newDonation = req.body;
-        //     // console.log(newDonation);
-        //     const result = await donatationCollection.insertOne(newDonation);
-        //     res.send(result);
-        // });
+        // Registration Operations
 
         app.get('/registrations', async (req, res) => {
             const registrations = await registrationCollection.find().toArray();
@@ -114,6 +123,22 @@ async function run() {
             const result = await registrationCollection.insertOne(newRegistration);
             res.send(result);
         });
+
+        app.put('/registrations/:id', async (req, res) => {
+            const id = req.params.id;
+            const updatedRegistration = req.body;
+            const result = await registrationCollection.updateOne({ _id: new ObjectId(id) }, { $set: updatedRegistration });
+            res.send(result);
+        });
+
+        app.delete('/registrations/:id', async (req, res) => {
+            const id = req.params.id;
+            const result = await registrationCollection.deleteOne({ _id: new ObjectId(id) });
+            res.send(result);
+        });
+
+
+        // Testing
 
         app.get('/', (req, res) => {
             res.send('Hello World');
