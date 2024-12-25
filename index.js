@@ -77,11 +77,18 @@ async function run() {
         // Events operation
 
         app.get('/events', async (req, res) => {
-            const events = await eventsCollection.find().toArray();
+
+            const email = req.query.email;
+            let query = {}
+            if (email) {
+                query = { userEmail: email }
+            }
+
+            const events = await eventsCollection.find(query).toArray();
             res.send(events);
         });
 
-        app.get('/events/details/:id',verifyToken, async (req, res) => {
+        app.get('/events/details/:id', verifyToken, async (req, res) => {
             const id = req.params.id;
             if (!ObjectId.isValid(id)) {
                 return res.status(400).send('Invalid event ID');
@@ -107,7 +114,7 @@ async function run() {
 
 
 
-        app.post('/events',verifyToken, async (req, res) => {
+        app.post('/events', verifyToken, async (req, res) => {
 
             const newEvent = req.body;
             // console.log(newCampaign);
@@ -137,27 +144,46 @@ async function run() {
 
         // Registration Operations
 
-        app.get('/registrations',verifyToken, async (req, res) => {
-            const registrations = await registrationCollection.find().toArray();
+        app.get('/registrations', verifyToken, async (req, res) => {
+            const email = req.query.email;
+            let query = {}
+            if (email) {
+                query = { userEmail: email }
+            }
+            const registrations = await registrationCollection.find(query).toArray();
             res.send(registrations);
         });
 
-        app.get('/registrations/:id',verifyToken, async (req, res) => {
+        app.get('/registrations/:id', verifyToken, async (req, res) => {
             const id = req.params.id;
             if (!ObjectId.isValid(id)) {
                 return res.status(400).send('Invalid registration ID');
             }
+
+
             const registration = await registrationCollection.findOne({ _id: new ObjectId(id) });
             res.send(registration);
         });
 
-        app.post('/registrations', async (req, res) => {
-            const newRegistration = req.body;
-            const result = await registrationCollection.insertOne(newRegistration);
-            res.send(result);
+        app.post('/registrations', verifyToken, async (req, res) => {
+            try {
+                const newRegistration = req.body;
+                const result = await registrationCollection.insertOne(newRegistration);
+
+                const id = newRegistration.eventId;
+                const query = { _id: new ObjectId(id) };
+                const event = await eventsCollection.findOne(query);
+
+                const count = (event.totalRegistrationCount || 0) + 1;
+                await eventsCollection.updateOne(query, { $set: { totalRegistrationCount: count } });
+
+                res.send(result);
+            } catch (error) {
+                res.status(500).send({ message: 'An error occurred', error });
+            }
         });
 
-        app.put('/registrations/:id',verifyToken, async (req, res) => {
+        app.put('/registrations/:id', verifyToken, async (req, res) => {
             const id = req.params.id;
             const updatedRegistration = req.body;
             delete updatedRegistration._id; // Ensure _id is not included in the update
@@ -165,10 +191,32 @@ async function run() {
             res.send(result);
         });
 
-        app.delete('/registrations/:id',verifyToken, async (req, res) => {
-            const id = req.params.id;
-            const result = await registrationCollection.deleteOne({ _id: new ObjectId(id) });
-            res.send(result);
+        app.delete('/registrations/:id', verifyToken, async (req, res) => {
+            try {
+                const id = req.params.id;
+
+                // Find the registration document to get the eventId
+                const registration = await registrationCollection.findOne({ _id: new ObjectId(id) });
+                if (!registration) {
+                    return res.status(404).send({ message: 'Registration not found' });
+                }
+
+                const eventID = registration.eventId;
+                const result = await registrationCollection.deleteOne({ _id: new ObjectId(id) });
+
+                const query = { _id: new ObjectId(eventID) };
+                const event = await eventsCollection.findOne(query);
+                if (!event) {
+                    return res.status(404).send({ message: 'Event not found' });
+                }
+
+                const count = (event.totalRegistrationCount) - 1;
+                await eventsCollection.updateOne(query, { $set: { totalRegistrationCount: count } });
+
+                res.send(result);
+            } catch (error) {
+                res.status(500).send({ message: 'An error occurred', error });
+            }
         });
 
 
