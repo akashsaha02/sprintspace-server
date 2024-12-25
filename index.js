@@ -24,7 +24,7 @@ const verifyToken = (req, res, next) => {
         return res.status(403).send("A token is required for authentication");
     }
     try {
-        const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
         req.user = decoded;
         // console.log("decoded", decoded);
     } catch (err) {
@@ -54,7 +54,7 @@ async function run() {
     try {
         // await client.connect();
         console.log("Connected to the server");
-        const database = client.db("speintSpace");
+        const database = client.db("sprintSpace");
         const eventsCollection = database.collection("events");
         const registrationCollection = database.collection("registrations");
 
@@ -81,11 +81,7 @@ async function run() {
             res.send(events);
         });
 
-        app.get('/events/details/:id', verifyToken, async (req, res) => {
-
-            if (req.user.email !== req.query.email) {
-                return res.status(403).send("Not authorized");
-            }
+        app.get('/events/details/:id',verifyToken, async (req, res) => {
             const id = req.params.id;
             if (!ObjectId.isValid(id)) {
                 return res.status(400).send('Invalid event ID');
@@ -111,10 +107,7 @@ async function run() {
 
 
 
-        app.post('/events', verifyToken, async (req, res) => {
-            if (req.user.email !== req.query.email) {
-                return res.status(403).send("Not authorized");
-            }
+        app.post('/events',verifyToken, async (req, res) => {
 
             const newEvent = req.body;
             // console.log(newCampaign);
@@ -158,7 +151,7 @@ async function run() {
             res.send(registration);
         });
 
-        app.post('/registrations',verifyToken, async (req, res) => {
+        app.post('/registrations', async (req, res) => {
             const newRegistration = req.body;
             const result = await registrationCollection.insertOne(newRegistration);
             res.send(result);
