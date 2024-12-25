@@ -77,17 +77,21 @@ async function run() {
         // Events operation
 
         app.get('/events', async (req, res) => {
-
-            const email = req.query.email;
-            let query = {}
-            if (email) {
-                query = { userEmail: email }
-            }
-
-            const events = await eventsCollection.find(query).toArray();
-            res.send(events);
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 9; // Updated limit
+            const skip = (page - 1) * limit;
+        
+            const events = await eventsCollection.find().skip(skip).limit(limit).toArray();
+            const totalEvents = await eventsCollection.countDocuments();
+        
+            res.send({
+                events,
+                totalEvents,
+                totalPages: Math.ceil(totalEvents / limit),
+                currentPage: page
+            });
         });
-
+        
         app.get('/events/details/:id', verifyToken, async (req, res) => {
             const id = req.params.id;
             if (!ObjectId.isValid(id)) {
