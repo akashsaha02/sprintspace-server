@@ -17,19 +17,20 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
+//verify jwt token
 const verifyToken = (req, res, next) => {
-    const token = req.cookies.token;
+    const token = req?.cookies?.token;
     if (!token) {
-        return res.status(401).send('Access Denied');
+        return res.status(403).send("A token is required for authentication");
     }
-    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-        if (err) {
-            return res.status(403).send('Invalid Token');
-        }
+    try {
+        const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
         req.user = decoded;
-        next();
-    })
-
+        // console.log("decoded", decoded);
+    } catch (err) {
+        return res.status(401).send("Invalid Token");
+    }
+    return next();
 };
 
 
@@ -80,7 +81,11 @@ async function run() {
             res.send(events);
         });
 
-        app.get('/events/details/:id', async (req, res) => {
+        app.get('/events/details/:id', verifyToken, async (req, res) => {
+
+            if (req.user.email !== req.query.email) {
+                return res.status(403).send("Not authorized");
+            }
             const id = req.params.id;
             if (!ObjectId.isValid(id)) {
                 return res.status(400).send('Invalid event ID');
@@ -106,21 +111,32 @@ async function run() {
 
 
 
-        app.post('/events', async (req, res) => {
+        app.post('/events', verifyToken, async (req, res) => {
+            if (req.user.email !== req.query.email) {
+                return res.status(403).send("Not authorized");
+            }
+
             const newEvent = req.body;
             // console.log(newCampaign);
             const result = await eventsCollection.insertOne(newEvent);
             res.send(result);
         });
 
-        app.put('/events/:id', async (req, res) => {
+        app.put('/events/:id', verifyToken, async (req, res) => {
+            if (req.user.email !== req.query.email) {
+                return res.status(403).send("Not authorized");
+            }
             const id = req.params.id;
             const updatedEvent = req.body;
             const result = await eventsCollection.updateOne({ _id: new ObjectId(id) }, { $set: updatedEvent });
             res.send(result);
         });
 
-        app.delete('/events/:id', async (req, res) => {
+        app.delete('/events/:id', verifyToken, async (req, res) => {
+            if (req.user.email !== req.query.email) {
+                return res.status(403).send("Not authorized");
+            }
+
             const id = req.params.id;
             const result = await eventsCollection.deleteOne({ _id: new ObjectId(id) });
             res.send(result);
@@ -128,12 +144,12 @@ async function run() {
 
         // Registration Operations
 
-        app.get('/registrations', async (req, res) => {
+        app.get('/registrations',verifyToken, async (req, res) => {
             const registrations = await registrationCollection.find().toArray();
             res.send(registrations);
         });
 
-        app.get('/registrations/:id', async (req, res) => {
+        app.get('/registrations/:id',verifyToken, async (req, res) => {
             const id = req.params.id;
             if (!ObjectId.isValid(id)) {
                 return res.status(400).send('Invalid registration ID');
@@ -142,13 +158,13 @@ async function run() {
             res.send(registration);
         });
 
-        app.post('/registrations', async (req, res) => {
+        app.post('/registrations',verifyToken, async (req, res) => {
             const newRegistration = req.body;
             const result = await registrationCollection.insertOne(newRegistration);
             res.send(result);
         });
 
-        app.put('/registrations/:id', async (req, res) => {
+        app.put('/registrations/:id',verifyToken, async (req, res) => {
             const id = req.params.id;
             const updatedRegistration = req.body;
             delete updatedRegistration._id; // Ensure _id is not included in the update
@@ -156,7 +172,7 @@ async function run() {
             res.send(result);
         });
 
-        app.delete('/registrations/:id', async (req, res) => {
+        app.delete('/registrations/:id',verifyToken, async (req, res) => {
             const id = req.params.id;
             const result = await registrationCollection.deleteOne({ _id: new ObjectId(id) });
             res.send(result);
