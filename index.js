@@ -89,7 +89,6 @@ async function run() {
 
             const events = await eventsCollection.find(query).skip(skip).limit(limit).toArray();
             const totalEvents = await eventsCollection.countDocuments();
-
             res.send({
                 myEvents,
                 events,
@@ -108,11 +107,15 @@ async function run() {
             res.send(event);
         });
 
-        app.get('/upcoming', verifyToken, async (req, res) => {
+        app.get('/running-events', verifyToken, async (req, res) => {
             const limitt = parseInt(req.query.limit) || 6;
             const currentDate = new Date().toISOString().split("T")[0];
             const marathons = await eventsCollection.find({ marathonStartDate: { $gt: currentDate } }).limit(limitt).toArray();
-            res.send(marathons);
+            const randomRunningEvents = marathons.sort(() => Math.random() - Math.random()).slice(0, 3);
+            res.send({
+                marathons,
+                randomRunningEvents
+            });
         });
 
         // app.get('/campaigns/:id/donations', async (req, res) => {
@@ -156,15 +159,37 @@ async function run() {
 
         // Registration Operations
 
+        // app.get('/registrations', verifyToken, async (req, res) => {
+        //     const email = req.query.email;
+        //     let query = {}
+        //     if (email) {
+        //         query = { userEmail: email }
+        //     }
+        //     const registrations = await registrationCollection.find(query).toArray();
+        //     res.send(registrations);
+        // });
         app.get('/registrations', verifyToken, async (req, res) => {
             const email = req.query.email;
-            let query = {}
+            const search = req.query.search; // Get the search query parameter
+            let query = {};
+
             if (email) {
-                query = { userEmail: email }
+                query.userEmail = email;
             }
-            const registrations = await registrationCollection.find(query).toArray();
-            res.send(registrations);
+
+            if (search) {
+                query.eventTitle = { $regex: search, $options: "i" }; // Case-insensitive search
+            }
+
+            try {
+                const registrations = await registrationCollection.find(query).toArray();
+                res.send(registrations);
+            } catch (error) {
+                console.error("Error fetching registrations:", error);
+                res.status(500).send({ error: "Failed to fetch registrations." });
+            }
         });
+
 
         app.get('/registrations/:id', verifyToken, async (req, res) => {
             const id = req.params.id;
