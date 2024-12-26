@@ -11,11 +11,19 @@ const app = express();
 
 // middlewares
 app.use(cors({
-    origin: ['http://localhost:5173', 'http://localhost:5174'],
+    origin: ['http://localhost:5173',
+        'https://sprint-space.firebaseapp.com',
+        'https://sprint-space.web.app'],
     credentials: true,
 }));
 app.use(express.json());
 app.use(cookieParser());
+
+const cookieOptions = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+};
 
 //verify jwt token
 const verifyToken = (req, res, next) => {
@@ -34,7 +42,7 @@ const verifyToken = (req, res, next) => {
 };
 
 
-const PORT = 3000 || process.env.PORT;
+const PORT =  3008;
 
 
 // MongoDB Database Connection
@@ -63,14 +71,11 @@ async function run() {
         app.post('/jwt', (req, res) => {
             const { user } = req.body;
             const token = jwt.sign({ user }, process.env.JWT_SECRET, { expiresIn: '5h' });
-            res.cookie('token', token, { httpOnly: true, secure: false }).send({ Success: 'Token sent' });
+            res.cookie('token', token, cookieOptions).send({ success: 'Token sent' });
         });
 
         app.post('/logout', (req, res) => {
-            res.clearCookie('token', {
-                httpOnly: true,
-                secure: false
-            }).send({ Success: 'Logged out' });
+            res.clearCookie('token', cookieOptions).send({ success: 'Logged out' });
         });
 
 
@@ -107,7 +112,7 @@ async function run() {
             res.send(event);
         });
 
-        app.get('/running-events', verifyToken, async (req, res) => {
+        app.get('/running-events', async (req, res) => {
             const limitt = parseInt(req.query.limit) || 6;
             const currentDate = new Date().toISOString().split("T")[0];
             const marathons = await eventsCollection.find({ marathonStartDate: { $gt: currentDate } }).limit(limitt).toArray();
