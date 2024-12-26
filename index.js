@@ -80,18 +80,25 @@ async function run() {
             const page = parseInt(req.query.page) || 1;
             const limit = parseInt(req.query.limit) || 9; // Updated limit
             const skip = (page - 1) * limit;
-        
-            const events = await eventsCollection.find().skip(skip).limit(limit).toArray();
+            const email = req.query.email;
+            let query = {}
+            if (email) {
+                query = { userEmail: email }
+            }
+            const myEvents = await eventsCollection.find(query).toArray();
+
+            const events = await eventsCollection.find(query).skip(skip).limit(limit).toArray();
             const totalEvents = await eventsCollection.countDocuments();
-        
+
             res.send({
+                myEvents,
                 events,
                 totalEvents,
                 totalPages: Math.ceil(totalEvents / limit),
                 currentPage: page
             });
         });
-        
+
         app.get('/events/details/:id', verifyToken, async (req, res) => {
             const id = req.params.id;
             if (!ObjectId.isValid(id)) {
@@ -101,7 +108,7 @@ async function run() {
             res.send(event);
         });
 
-        app.get('/upcoming',verifyToken, async (req, res) => {
+        app.get('/upcoming', verifyToken, async (req, res) => {
             const limitt = parseInt(req.query.limit) || 6;
             const currentDate = new Date().toISOString().split("T")[0];
             const marathons = await eventsCollection.find({ marathonStartDate: { $gt: currentDate } }).limit(limitt).toArray();
