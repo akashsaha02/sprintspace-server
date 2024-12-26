@@ -101,11 +101,12 @@ async function run() {
             res.send(event);
         });
 
-        // app.get('/running', async (req, res) => {
-        //     const currentDate = new Date().toISOString().split("T")[0];
-        //     const campaignst = await campaignsCollection.find({ deadline: { $gt: currentDate } }).limit(6).toArray();
-        //     res.send(campaignst);
-        // });
+        app.get('/upcoming',verifyToken, async (req, res) => {
+            const limitt = parseInt(req.query.limit) || 6;
+            const currentDate = new Date().toISOString().split("T")[0];
+            const marathons = await eventsCollection.find({ marathonStartDate: { $gt: currentDate } }).limit(limitt).toArray();
+            res.send(marathons);
+        });
 
         // app.get('/campaigns/:id/donations', async (req, res) => {
         //     const id = req.params.id;
