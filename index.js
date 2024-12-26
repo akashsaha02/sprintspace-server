@@ -103,7 +103,7 @@ async function run() {
             });
         });
 
-        app.get('/events/details/:id', verifyToken, async (req, res) => {
+        app.get('/events/details/:id',  async (req, res) => {
             const id = req.params.id;
             if (!ObjectId.isValid(id)) {
                 return res.status(400).send('Invalid event ID');
