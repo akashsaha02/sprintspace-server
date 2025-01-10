@@ -82,25 +82,13 @@ async function run() {
         // Events operation
 
         app.get('/events', async (req, res) => {
-            const page = parseInt(req.query.page) || 1;
-            const limit = parseInt(req.query.limit) || 9; // Updated limit
-            const skip = (page - 1) * limit;
             const email = req.query.email;
             let query = {}
             if (email) {
                 query = { userEmail: email }
             }
-            const myEvents = await eventsCollection.find(query).toArray();
-
-            const events = await eventsCollection.find(query).skip(skip).limit(limit).toArray();
-            const totalEvents = await eventsCollection.countDocuments();
-            res.send({
-                myEvents,
-                events,
-                totalEvents,
-                totalPages: Math.ceil(totalEvents / limit),
-                currentPage: page
-            });
+            const events = await eventsCollection.find(query).toArray();
+            res.send(events);
         });
 
         app.get('/events/details/:id',  async (req, res) => {
